@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<FreeFlyerProjectFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" timePrecisionMode="nanosecond" schemaVersion="7.7.0.5">
+  <ProjectInformation>
+    <Author />
+    <Source />
+    <FreeFlyerVersion>7.7.1.55976</FreeFlyerVersion>
+    <RevisionNumber />
+    <Title />
+    <Subject />
+    <Category />
+    <Keywords />
+    <Comments />
+    <Notes />
+  </ProjectInformation>
+  <ProjectPreferences>
+    <General>
+      <LockProjectFromEditing>false</LockProjectFromEditing>
+    </General>
+    <OnOpen>
+      <ShowControlSequence>true</ShowControlSequence>
+      <ShowEmptyEnvironment>false</ShowEmptyEnvironment>
+      <ShowNotes>false</ShowNotes>
+      <ShowHome>false</ShowHome>
+      <ShowOutput>false</ShowOutput>
+      <CreateBackup>false</CreateBackup>
+      <BackupLocation></BackupLocation>
+    </OnOpen>
+    <OnRun>
+      <SaveMissionPlan>false</SaveMissionPlan>
+      <HideWarningMessages>false</HideWarningMessages>
+    </OnRun>
+  </ProjectPreferences>
+  <ProjectDataFiles>
+    <EarthOrientationFile useDefault="true"></EarthOrientationFile>
+    <ElectronDensityCoefficientFile useDefault="true"></ElectronDensityCoefficientFile>
+    <GeopotentialFile useDefault="true"></GeopotentialFile>
+    <HarrisPriesterDragFile useDefault="true"></HarrisPriesterDragFile>
+    <JacchiaAtmosphereModelFile useDefault="true"></JacchiaAtmosphereModelFile>
+    <LeapSecondFile useDefault="true"></LeapSecondFile>
+    <MagneticFieldFile useDefault="true"></MagneticFieldFile>
+    <PlanetaryFile useDefault="true"></PlanetaryFile>
+    <StationGeodeticsFile useDefault="true"></StationGeodeticsFile>
+    <SolidTideFile useDefault="true"></SolidTideFile>
+    <DSTFile useDefault="true"></DSTFile>
+    <StarFieldFile useDefault="true"></StarFieldFile>
+  </ProjectDataFiles>
+  <ProjectObjects>
+    <Object>
+      <SolarSystem name="FF_SolarSystem" isConstant="false" isGlobal="true">
+        <Name>FF_SolarSystem</Name>
+        <ComputePolarMotion>true</ComputePolarMotion>
+        <ApplyUT1Correction>true</ApplyUT1Correction>
+        <COUpdateInterval units="s" displayed_units="s">0</COUpdateInterval>
+        <NPUpdateInterval units="s" displayed_units="s">1800</NPUpdateInterval>
+        <IonosphereOptions>
+          <IonosphereOptions name="FF_SolarSystem_|ionoOptions|" isConstant="false" isGlobal="false">
+            <Name>FF_SolarSystem_|ionoOptions|</Name>
+            <MaximumHeight units="km" displayed_units="km">1000</MaximumHeight>
+            <MinimumHeight units="km" displayed_units="km">80</MinimumHeight>
+            <IntegrationStepSize units="km" displayed_units="km">25</IntegrationStepSize>
+            <ScaleFactor units="" displayed_units="">1</ScaleFactor>
+            <Model>0</Model>
+            <metadata dim="0" />
+          </IonosphereOptions>
+        </IonosphereOptions>
+        <NoradKeplerEqTolerance units="" displayed_units="">1e-12</NoradKeplerEqTolerance>
+        <metadata dim="0" />
+      </SolarSystem>
+    </Object>
+    <Object>
+      <ConsoleWindow name="Console" isConstant="false" isGlobal="true">
+        <Name>Console</Name>
+        <WindowTitle>Console</WindowTitle>
+        <WordWrap>false</WordWrap>
+        <CurrentTextColor>0</CurrentTextColor>
+        <BackColor>16777215</BackColor>
+        <Dimension units="" displayed_units="">10</Dimension>
+        <DockMode>1</DockMode>
+        <CurrentFontType>0</CurrentFontType>
+        <UseStdOut>false</UseStdOut>
+        <ShowOnRun>false</ShowOnRun>
+        <metadata dim="0" />
+      </ConsoleWindow>
+    </Object>
+  </ProjectObjects>
+  <ProjectMissionSequence>
+    <ProjectExternals />
+    <ProjectCommands>
+      <FreeForm enabled="true">
+        <Label>FreeForm</Label>
+        <Bookmarks />
+        <Breakpoints />
+        <FreeFormScript><![CDATA[
+// Mission Plan Description and Console Setup
+
+// This Mission Plan demonstrates how FreeFlyer can be used to generate a Two-Line Element file using the SGP4StateEstimator.
+
+// In this example, the SGP4 state is estimated using ground station observation data.
+// The initial state of the spacecraft is perturbed from the definitive orbit by 1 km in each axis in position.
+
+// Console Setup
+Console.Dimension = 40;
+Console.DockMode = 3;
+Console.WordWrap = 1;
+Console.BackColor = ColorTools.Black;
+Console.CurrentTextColor = ColorTools.Aqua;
+Console.Show();
+
+
+// Create Objects
+
+// Set the propagator type of the spacecraft to be processed as sgp4
+sat1.SetPropagatorType(TypeOf(SGP4));
+
+// Create a FFGroundObservationFile object and import observation data
+FFGroundObservationFile ffGroundObservationData;
+ffGroundObservationData.Filename = "..\_Support_Files\GenerateTwoLineElementFromTrackingData_FFGroundObservationICESatData.txt";
+ffGroundObservationData.SetObservedSpacecraft(sat1);
+ffGroundObservationData.AddObservationSource(McMurdo);
+ffGroundObservationData.AddObservationSource(Svalbard);
+ffGroundObservationData.AddObservationSource(Wallops);
+ffGroundObservationData.UseRangeRate = 0;
+
+// Set up the SGP4StateEstimator object
+SGP4StateEstimator sgp4Estimator;
+sgp4Estimator.SetSpacecraftToProcess(sat1);
+
+// Do not use the ObservationModel child object to generate observations
+sgp4Estimator.UseObservationModel = 0;
+
+// Register the tracking data file to the BatchLeastSquaresOD child object
+sgp4Estimator.Batch.RegisterTrackingDataFile(ffGroundObservationData);
+
+// Solve for B*
+sat1.OD.BStar.ProcessAction = 1;
+
+// B* Explanation
+Console.CurrentTextColor=ColorTools.Yellow;
+Report "B* is a drag term that accounts for the effects of atmospheric drag on a satellite's motion. We must estimate it in the example because the satellite being processed is in a low earth orbit." to Console;
+Report "" to Console;
+
+
+// Generate TLE
+
+// Sync spacecraft to first observation
+Step sat1 to (sat1.Epoch == ffGroundObservationData.DataSpanStartEpoch);
+
+// Execute 5 iterations of the Batch OD Process to determine the sgp4 state
+Variable numIterations = 5;
+sgp4Estimator.Batch.Iterate(numIterations);
+
+// Propagate for one day and update the view and plot windows
+While (scDefinitive.ElapsedTime < TIMESPAN(1 days));
+	Step scDefinitive;
+	Step sat1 to (sat1.Epoch == scDefinitive.Epoch);
+	Update PlotWindow1;
+	Update ViewWindow1;
+End;
+
+// Write the generated TLE data to a file
+sgp4Estimator.TLEHandler.WriteToFile(1, "..\\_Output_Files\\GenerateTwoLineElementFromTrackingData_OutputTLE.tle");
+Console.CurrentTextColor=ColorTools.Lime;
+Report "TLE file generated to _Output_Files folder: GenerateTwoLineElementFromTrackingData_OutputTLE.tle" to Console;
+
+// Open the generated TLE data file
+FF_Preferences.OpenFileWithDefaultProgram("..\\_Output_Files\\GenerateTwoLineElementFromTrackingData_OutputTLE.tle", 1);
+]]></FreeFormScript>
+      </FreeForm>
+    </ProjectCommands>
+  </ProjectMissionSequence>
+  <ProjectScript><![CDATA[
+// Mission Plan Description and Console Setup
+
+// This Mission Plan demonstrates how FreeFlyer can be used to generate a Two-Line Element file using the SGP4StateEstimator.
+
+// In this example, the SGP4 state is estimated using ground station observation data.
+// The initial state of the spacecraft is perturbed from the definitive orbit by 1 km in each axis in position.
+
+// Console Setup
+Console.Dimension = 40;
+Console.DockMode = 3;
+Console.WordWrap = 1;
+Console.BackColor = ColorTools.Black;
+Console.CurrentTextColor = ColorTools.Aqua;
+Console.Show();
+
+
+// Create Objects
+
+// Set the propagator type of the spacecraft to be processed as sgp4
+sat1.SetPropagatorType(TypeOf(SGP4));
+
+// Create a FFGroundObservationFile object and import observation data
+FFGroundObservationFile ffGroundObservationData;
+ffGroundObservationData.Filename = "..\_Support_Files\GenerateTwoLineElementFromTrackingData_FFGroundObservationICESatData.txt";
+ffGroundObservationData.SetObservedSpacecraft(sat1);
+ffGroundObservationData.AddObservationSource(McMurdo);
+ffGroundObservationData.AddObservationSource(Svalbard);
+ffGroundObservationData.AddObservationSource(Wallops);
+ffGroundObservationData.UseRangeRate = 0;
+
+// Set up the SGP4StateEstimator object
+SGP4StateEstimator sgp4Estimator;
+sgp4Estimator.SetSpacecraftToProcess(sat1);
+
+// Do not use the ObservationModel child object to generate observations
+sgp4Estimator.UseObservationModel = 0;
+
+// Register the tracking data file to the BatchLeastSquaresOD child object
+sgp4Estimator.Batch.RegisterTrackingDataFile(ffGroundObservationData);
+
+// Solve for B*
+sat1.OD.BStar.ProcessAction = 1;
+
+// B* Explanation
+Console.CurrentTextColor=ColorTools.Yellow;
+Report "B* is a drag term that accounts for the effects of atmospheric drag on a satellite's motion. We must estimate it in the example because the satellite being processed is in a low earth orbit." to Console;
+Report "" to Console;
+
+
+// Generate TLE
+
+// Sync spacecraft to first observation
+Step sat1 to (sat1.Epoch == ffGroundObservationData.DataSpanStartEpoch);
+
+// Execute 5 iterations of the Batch OD Process to determine the sgp4 state
+Variable numIterations = 5;
+sgp4Estimator.Batch.Iterate(numIterations);
+
+// Propagate for one day and update the view and plot windows
+While (scDefinitive.ElapsedTime < TIMESPAN(1 days));
+	Step scDefinitive;
+	Step sat1 to (sat1.Epoch == scDefinitive.Epoch);
+	Update PlotWindow1;
+	Update ViewWindow1;
+End;
+
+// Write the generated TLE data to a file
+sgp4Estimator.TLEHandler.WriteToFile(1, "..\\_Output_Files\\GenerateTwoLineElementFromTrackingData_OutputTLE.tle");
+Console.CurrentTextColor=ColorTools.Lime;
+Report "TLE file generated to _Output_Files folder: GenerateTwoLineElementFromTrackingData_OutputTLE.tle" to Console;
+
+// Open the generated TLE data file
+FF_Preferences.OpenFileWithDefaultProgram("..\\_Output_Files\\GenerateTwoLineElementFromTrackingData_OutputTLE.tle", 1);
+]]></ProjectScript>
+  <ProjectNotes></ProjectNotes>
+</FreeFlyerProjectFile>
